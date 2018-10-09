@@ -1,0 +1,4 @@
+{ Error: Error requesting Google Play:undefined
+    at C:\Users\samir\node_modules\google-play-scraper\lib\utils\request.js:42:19
+    at <anonymous>
+    at process._tickCallback (internal/process/next_tick.js:189:7) status: 503 }
