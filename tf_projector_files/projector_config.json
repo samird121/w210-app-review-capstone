@@ -6,8 +6,8 @@
         37684,
         100
       ],
-      "tensorPath": "https://www.dropbox.com/s/bxrr05igapre2bi/tf_projector_data.tsv?dl=1",
-      "metadataPath": "https://www.dropbox.com/s/zu8teu5uycna31t/tf_projector_metadata.tsv?dl=1"
+      "tensorPath": "https://raw.githubusercontent.com/samird121/w210-app-review-capstone/master/tf_projector_files/tf_projector_data.tsv",
+      "metadataPath": "https://raw.githubusercontent.com/samird121/w210-app-review-capstone/master/tf_projector_files/tf_projector_metadata.tsv"
     }
   ]
 }
