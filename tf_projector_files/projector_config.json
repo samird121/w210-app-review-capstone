@@ -1,7 +1,7 @@
 {
   "embeddings": [
     {
-      "tensorName": "My tensor",
+      "tensorName": "YouTube iOS app reviews",
       "tensorShape": [
         37684,
         100
