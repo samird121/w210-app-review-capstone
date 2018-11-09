@@ -1,18 +1,23 @@
+print('Loading GUI...')
+
+import time
+load_start_time = time.time()
+
 import csv
 import nltk
 import re
 import numpy as np
 import datetime
-import time
+
 import gensim, logging
 import matplotlib.pyplot as plt
 
 from sklearn.preprocessing import StandardScaler
-from sklearn.cluster import KMeans
-from sklearn.decomposition import PCA
+#from sklearn.cluster import KMeans
+#from sklearn.decomposition import PCA
 
 from scipy.spatial.distance import cdist, cosine
-from scipy.spatial import cKDTree
+#from scipy.spatial import cKDTree
 
 from gensim.models import Word2Vec
 
@@ -21,9 +26,9 @@ from nltk.corpus import stopwords
 from nltk.stem.porter import PorterStemmer
 
 from bokeh.io import curdoc
-from bokeh.layouts import row, widgetbox
+from bokeh.layouts import row, column
 from bokeh.models import ColumnDataSource
-from bokeh.models.widgets import Slider, TextInput
+from bokeh.models.widgets import Slider, TextInput, PreText, Select, RangeSlider, Button
 from bokeh.plotting import figure
 
 
@@ -108,10 +113,10 @@ final_versions = np.array(versions)[nonzero_indeces]
 
 
 
-start = time.time()
-model = Word2Vec(final_reviews, min_count=1)
+model = Word2Vec.load("../../large files/ebay.model")
+#model = Word2Vec(final_reviews, min_count=1)
 #model.save("../../large files/youtube_w2v_stoptokens.model")
-print(time.time() - start)
+
 
 
 
@@ -137,7 +142,7 @@ avg_vectors_scaled = scaler.fit_transform(avg_vectors)
 print(avg_vectors.shape)
 print(avg_vectors_scaled.shape)
 
-def find_relevant_reviews(key, avg_vectors, raw_text, n=1, scaled=False):
+def find_relevant_reviews(key, avg_vectors, raw_text, scaled=False):
     
     indices = None
     distances = None
@@ -162,7 +167,7 @@ def find_relevant_reviews(key, avg_vectors, raw_text, n=1, scaled=False):
             key_vector = scaler.transform(np.array(key_vector).reshape(1,-1))
 
         distances = [1-cosine(key_vector, vector) for vector in avg_vectors]
-        indices = np.argsort(distances)[-n:]
+        indices = np.argsort(distances)
     else:
         print("Warning: none of the words in the query were in the model's vocabulary.")
     
@@ -171,7 +176,17 @@ def find_relevant_reviews(key, avg_vectors, raw_text, n=1, scaled=False):
         
     return indices, distances
     
-
+def print_relevant_reviews(indices, distances, reviews, n=10):
+    text = "Most relevant reviews in selected timeframe:\n\n"
+    top_indices = indices[-n:]
+    for i in range(len(top_indices)):
+        index = top_indices[-i-1]
+        distance = distances[index]
+        text += "'"+str(reviews[index])+", Cosine similarity: "+str(round(distance, 4))+")\n"
+        #text += "'"+str(final_reviews_unprocessed[index])+"' (Rating: "+str(final_ratings[index])+")\n"
+        
+    return text
+    
 
     
 def get_topic_evolution_data(distances, query, relevance_threshold = 0.8):
@@ -208,9 +223,8 @@ def get_topic_evolution_data(distances, query, relevance_threshold = 0.8):
 #interesting ones: 'fast forward button', 'crash', 'freeze', 'update'
 query = 'i love this app'
 
-indices, distances = find_relevant_reviews(query, avg_vectors_scaled, final_reviews_unprocessed, n=10, scaled=True)
+indices, distances = find_relevant_reviews(query, avg_vectors_scaled, final_reviews_unprocessed,  scaled=True)
 mean_distances = get_topic_evolution_data(distances, query)
-
 
 
 #indices, distances = find_relevant_reviews(query, avg_vectors, final_reviews_unprocessed, n=10, scaled=False)
@@ -237,48 +251,84 @@ mean_distances = get_topic_evolution_data(distances, query)
     
     
 # Set up data
+
 source = ColumnDataSource(data=dict(x=range(len(unique_dates)), y=mean_distances))
 
 
-# Set up plot
-plot = figure(plot_height=400, plot_width=400, title="")
+tools = 'pan,wheel_zoom,xbox_select,reset'
 
-plot.line('x', 'y', source=source, line_width=3, line_alpha=0.6)
+# Set up plot
+plot = figure(plot_height=400, plot_width=1000, title="", tools=tools, active_drag="xbox_select")
+
+plot.line('x', 'y', source=source, line_width=3, line_alpha=1, selection_color="red",)
 
 
 # Set up widgets
 query = TextInput(title="query", value='i love this app')
 relevance_threshold = Slider(title="relevance threshold", value=0.8, start=0, end=1, step=0.01)
-#amplitude = Slider(title="amplitude", value=1.0, start=-5.0, end=5.0, step=0.1)
-#phase = Slider(title="phase", value=0.0, start=0.0, end=2*np.pi)
-#freq = Slider(title="frequency", value=1.0, start=0.1, end=5.1, step=0.1)
+reviews = PreText(text='bokeh bokeh', width=1000)
+date_range = RangeSlider(title="Select range of dates", start = 1, end = len(unique_dates), step=1, value=(1, len(unique_dates)), width=1000)
+update_printed_reviews_button = Button(label="Get relevant reviews in selected timeframe", button_type="success")
+
+
+
+
+
+
+
+
+
+
 
 
 
 
 def update_data(attrname, old, new):
+    
 
     # Get the current slider values
     q = query.value
     plot.title.text = q
     r = relevance_threshold.value
     
-    indices, distances = find_relevant_reviews(q, avg_vectors_scaled, final_reviews_unprocessed, n=10, scaled=True)
-    mean_distances = get_topic_evolution_data(distances, q, relevance_threshold)
+    #note - n=10 argument is dumb
+    indices, distances = find_relevant_reviews(q, avg_vectors_scaled, final_reviews_unprocessed, scaled=True)
+    mean_distances = get_topic_evolution_data(distances, q, r)
 
     source.data = dict(x=range(len(unique_dates)), y=mean_distances)
+    
+    
 
-for w in [query]:
+for w in [query, relevance_threshold]:
     w.on_change('value', update_data)
+                                                                                                                 
+                                                                                                                 
+def update_printed_reviews():
+    (start_index, end_index) = date_range.value
+    
+    review_indices = [item for sublist in unique_date_indices[int(start_index):int(end_index)] for item in sublist]
+    #print(review_indices)
+    
+    # Get the current slider values
+    q = query.value
 
+    
+    
+    indices, distances = find_relevant_reviews(q, avg_vectors_scaled[review_indices], final_reviews_unprocessed[review_indices], scaled=True)
+    reviews.text = print_relevant_reviews(indices, distances, final_reviews_unprocessed[review_indices], n=10)
+                                                                               
+update_printed_reviews_button.on_click(update_printed_reviews)                                                                                       
 
 # Set up layouts and add to document
-#inputs = widgetbox(text, offset, amplitude, phase, freq)
-inputs = widgetbox(query)
+
+col1 = column(query, relevance_threshold, width=300)
+col2 = column(plot, date_range,update_printed_reviews_button, reviews, width=1000)
+layout = row(col1, col2)
+
+curdoc().add_root(layout)
+curdoc().title = "App Review GUI!"
 
 
-curdoc().add_root(row(inputs, plot, width=800))
-curdoc().title = "Sliders"
 
-
-
+load_time = time.time() - load_start_time
+print('Load time:', load_time)
