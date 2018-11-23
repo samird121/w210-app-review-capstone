@@ -136,14 +136,14 @@ for app_name in app_names:
 
 
 
-def find_relevant_reviews(key, avg_vectors, scaler, model, scaled=False):
+def find_relevant_reviews(key, avg_vectors, raw_text, scaler, model, scaled=False):
     
-
+    indices = None
     distances = None
     
     key_processed = custom_preprocessor(key)[0]
     key_list = key_processed.split(' ')
-    #filter to only those in the w2v model's vocabulary
+    #filter to only those in the w2v model's covacbulary
     vocab = model.wv.vocab.keys()
     key_list_vocab_words = []
     key_list_nonvocab_words = []
@@ -161,17 +161,17 @@ def find_relevant_reviews(key, avg_vectors, scaler, model, scaled=False):
             key_vector = scaler.transform(np.array(key_vector).reshape(1,-1))
 
         distances = [1-cosine(key_vector, vector) for vector in avg_vectors]
+        indices = np.argsort(distances)
     else:
         print("Warning: none of the words in the query were in the model's vocabulary.")
     
     if len(key_list_nonvocab_words) > 0:
         print("Excluded words:", key_list_nonvocab_words)
         
-    return distances, key_list_nonvocab_words
+    return indices, distances, key_list_nonvocab_words
     
-def print_relevant_reviews(distances, reviews, n=10):
+def print_relevant_reviews(indices, distances, reviews, n=10):
     text = "Most relevant reviews in selected timeframe:\n\n"
-    indices = np.argsort(distances) 
     top_indices = indices[-n:]
     for i in range(len(top_indices)):
         index = top_indices[-i-1]
@@ -179,12 +179,13 @@ def print_relevant_reviews(distances, reviews, n=10):
 
         text += "'"+str(reviews[index])+", Cosine similarity: "+str(round(distance, 4))+")\n"
 
+        #text += "'"+str(final_reviews_unprocessed[index])+"' (Rating: "+str(final_ratings[index])+")\n"
 
     return text
     
 
     
-def get_topic_evolution_data(distances, unique_date_indices, relevance_threshold = 0.8):
+def get_topic_evolution_data(distances, query, unique_date_indices, relevance_threshold = 0.8):
     
     
     mean_distances = []
@@ -216,6 +217,7 @@ def get_topic_evolution_data(distances, unique_date_indices, relevance_threshold
     
 #initialize variables for gui
 query = 'i love this app'
+
 initial_app_name = 'ebay'
 
 model = model_dict[initial_app_name]
@@ -226,11 +228,23 @@ unique_dates = unique_dates_dict[initial_app_name]
 unique_date_indices = unique_date_indices_dict[initial_app_name]
 
 
-distances, key_list_nonvocab_words = find_relevant_reviews(query, avg_vectors_scaled, scaler, model, scaled=True)
-mean_distances, percent_relevant_reviews = get_topic_evolution_data(distances, unique_date_indices, relevance_threshold = 0.5)
-printed_reviews_text = print_relevant_reviews(distances, final_reviews_unprocessed, n=10)
+indices, distances, key_list_nonvocab_words = find_relevant_reviews(query, avg_vectors_scaled, final_reviews_unprocessed,  scaler, model, scaled=True)
+mean_distances, percent_relevant_reviews = get_topic_evolution_data(distances, query, unique_date_indices, relevance_threshold = 0.5)
 
 
+#indices, distances = find_relevant_reviews(query, avg_vectors, final_reviews_unprocessed, n=10, scaled=False)
+#for i in range(len(indices)):
+#    index = indices[-(i+1)]
+#    print(final_reviews_unprocessed[index])
+#    print("Rating:", final_ratings[index])
+#    print("Cosine similarity:", round(distances[index], 4))
+#    print('*******\n')
+    
+    
+    
+    
+    
+    
     
     
     
@@ -268,7 +282,8 @@ relevance_threshold = Slider(title="relevance threshold", value=0.5, start=0, en
 app_select = Select(title='Select app:', value=app_names[0], options=app_names)
 limit_to_keyword = TextInput(title="limit to reviews containing the word:", value='')
 
-reviews = PreText(text=printed_reviews_text, width=1000)
+reviews = PreText(text='', width=1000)
+#date_range = RangeSlider(title="Select range of dates", start = 1, end = len(unique_dates), step=1, value=(1, len(unique_dates)), width=1000)
 date_range = DateRangeSlider(title="Select range of dates", start = unique_dates[0], end = unique_dates[-1], step=1, value=(unique_dates[0], unique_dates[-1]), width=1000)
 update_printed_reviews_button = Button(label="Get relevant reviews in selected timeframe", button_type="success")
 
@@ -293,9 +308,9 @@ def update_app(attrname, old, new):
     
     #do the rest here
     update_data()
-    
-    
-    
+
+   
+
 app_select.on_change('value', update_app)
 
 
@@ -311,22 +326,23 @@ def update_data():
     unique_dates = unique_dates_dict[app_name]
     unique_date_indices = unique_date_indices_dict[app_name]
     
-
+    #date_range.start = 1
+    #date_range.end = len(unique_dates)
     
-    #limit_keyword = limit_to_keyword.value
-    #if len(limit_keyword) > 0:
-    #    limit_indices = np.where([limit_keyword in review for review in final_reviews_unprocessed])
-    #    #print(limit_indices)
-    #    final_reviews_unprocessed = final_reviews_unprocessed[limit_indices]
-    #    avg_vectors_scaled = avg_vectors_scaled[limit_indices]
-    #    
-    #    final_dates = np.array(final_dates_dict[app_name])[limit_indices]
-    #    unique_dates = np.unique(final_dates)
-    #    unique_date_indices = []
-    #    for date in unique_dates:
-    #            date_indices = np.where(np.array(final_dates)==date)[0]
-    #            unique_date_indices.append(date_indices)
-    #    unique_dates = [parser.parse(date) for date in unique_dates]
+    limit_keyword = limit_to_keyword.value
+    if len(limit_keyword) > 0:
+        limit_indices = np.where([limit_keyword in review for review in final_reviews_unprocessed])
+        #print(limit_indices)
+        final_reviews_unprocessed = final_reviews_unprocessed[limit_indices]
+        avg_vectors_scaled = avg_vectors_scaled[limit_indices]
+        
+        final_dates = np.array(final_dates_dict[app_name])[limit_indices]
+        unique_dates = np.unique(final_dates)
+        unique_date_indices = []
+        for date in unique_dates:
+                date_indices = np.where(np.array(final_dates)==date)[0]
+                unique_date_indices.append(date_indices)
+        unique_dates = [parser.parse(date) for date in unique_dates]
     
 
     # Get the current slider values
@@ -335,37 +351,80 @@ def update_data():
     plot.title.text = 'Average cosine similarity for query: ' + q
     plot2.title.text = '% reviews with cosine similarity above ' + str(r) + ' for query: ' + q
     
+    #note - n=10 argument is dumb, get rid of it
 
-
-    distances, key_list_nonvocab_words = find_relevant_reviews(q, avg_vectors_scaled, scaler, model, scaled=True)
+    indices, distances, key_list_nonvocab_words = find_relevant_reviews(q, avg_vectors_scaled, final_reviews_unprocessed, scaler, model, scaled=True)
     words_not_in_vocab.text = 'Query words not in vocab: '+', '.join(key_list_nonvocab_words)
 
-    mean_distances, percent_relevant_reviews = get_topic_evolution_data(distances, unique_date_indices, r)
+    mean_distances, percent_relevant_reviews = get_topic_evolution_data(distances, q,  unique_date_indices, r)
     
-
+    print(unique_dates)
+    print(mean_distances)
     source.data = dict(x=unique_dates, y=mean_distances)
     source2.data = dict(x=unique_dates, y=percent_relevant_reviews)
     
+    #(start_index, end_index) = date_range.value
+    #start_index = int(start_index)
+    #end_index = int(end_index)
     
+    #inefficient?percent_relevant_reviews
+    #source_selected.data = dict(x=unique_dates, y=mean_distances[start_index:end_index])
+    #source2_selected.data = dict(x=unique_dates, y=percent_relevant_reviews[start_index:end_index])
+    update_printed_reviews()
+
+
+update_plots_button.on_click(update_data)
+
+                                                                                                                 
+                                                                                                                 
+def update_printed_reviews():
     
+    app_name = app_select.value
     
+    #get app data
+    model = model_dict[app_name]
+    avg_vectors_scaled = avg_vectors_scaled_dict[app_name]
+    scaler = scaler_dict[app_name]
+    final_reviews_unprocessed = final_reviews_unprocessed_dict[app_name]
+    unique_dates = unique_dates_dict[app_name]
+    unique_date_indices = unique_date_indices_dict[app_name]
+    
+    limit_keyword = limit_to_keyword.value
+    if len(limit_keyword) > 0:
+        limit_indices = np.where([limit_keyword in review for review in final_reviews_unprocessed])
+        final_reviews_unprocessed = final_reviews_unprocessed[limit_indices]
+        avg_vectors_scaled = avg_vectors_scaled[limit_indices]
+        
+        final_dates = np.array(final_dates_dict[app_name])[limit_indices]
+        unique_dates = np.unique(final_dates)
+        unique_date_indices = []
+        for date in unique_dates:
+                date_indices = np.where(np.array(final_dates)==date)[0]
+                unique_date_indices.append(date_indices)
+        unique_dates = [parser.parse(date) for date in unique_dates]
+
     (start_date, end_date) = date_range.value_as_datetime
-    min_date = date_range.start
-    max_date = date_range.end
     
     start_index = np.where(np.array(unique_dates, dtype='datetime64') >= np.datetime64(start_date))[0][0]
     end_index = np.where(np.array(unique_dates, dtype='datetime64') <= np.datetime64(end_date))[0][-1]
+
+    review_indices = [item for sublist in unique_date_indices[start_index:end_index] for item in sublist]
     
-    #if a range of dates has been selected (i.e. the selection isn't just on the min/max)
-    if start_date != min_date or end_date != max_date:        
-        review_indices = [item for sublist in unique_date_indices[start_index:end_index] for item in sublist]
-        print_distances = np.array(distances)[review_indices]
-        print_reviews_unprocessed = final_reviews_unprocessed[review_indices]
-    else:
-        print_distances = distances
-        print_reviews_unprocessed = final_reviews_unprocessed
     
-    reviews.text = print_relevant_reviews(print_distances, print_reviews_unprocessed, n=10)
+   
+
+    
+    # Get the current slider values
+    q = query.value
+    r = relevance_threshold.value
+
+
+    
+    indices, distances, key_list_nonvocab_words = find_relevant_reviews(q, avg_vectors_scaled[review_indices], final_reviews_unprocessed[review_indices], scaler, model,scaled=True)
+
+
+    words_not_in_vocab.text = 'Query words not in vocab: '+', '.join(key_list_nonvocab_words)
+    reviews.text = print_relevant_reviews(indices, distances, final_reviews_unprocessed[review_indices], n=10)
     
     original_source_xvals = source.data['x']
     original_source2_xvals = source2.data['x']
@@ -374,15 +433,9 @@ def update_data():
     
     source_selected.data = dict(x=original_source_xvals[start_index:end_index], y=original_source_yvals[start_index:end_index])
     source2_selected.data = dict(x=original_source2_xvals[start_index:end_index], y=original_source2_yvals[start_index:end_index])
-    
-    
 
-
-update_plots_button.on_click(update_data)                                                                           
-update_printed_reviews_button.on_click(update_data) 
-
-
-
+                                                                               
+update_printed_reviews_button.on_click(update_printed_reviews)                                                                                       
 
 # Set up layouts and add to document
 

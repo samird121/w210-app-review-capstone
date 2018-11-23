@@ -5,6 +5,7 @@ import nltk
 import re
 import numpy as np
 import pandas as pd
+from dateutil import parser
 
 import gensim, logging
 from gensim.models import Word2Vec
@@ -42,15 +43,17 @@ def custom_preprocessor(text):
 
 
 
-filepaths = ['./android/ebay/total_info.txt', './android/clean_master/total_info.txt', './android/swiftkey_keyboard/total_info.txt', './android/viber/total_info.txt']
-app_names = ['ebay', 'clean_master', 'swiftkey_keyboard', 'viber']
+filepaths = ['./android/ebay/total_info.txt', './android/clean_master/total_info.txt', './android/swiftkey_keyboard/total_info.txt', './android/viber/total_info.txt', './ios/noaa-radar-pro-severe-weather/total_info.txt', './ios/youtube/total_info.txt']
+app_names = ['ebay', 'clean_master', 'swiftkey_keyboard', 'viber', 'noaa-radar-pro-severe-weather', 'youtube']
+oses = ['android', 'android', 'android', 'android', 'ios', 'ios']
 
 
 ###load data
 for i in range(len(filepaths)): 
-    
+
     filepath = filepaths[i]
     app_name = app_names[i]
+    os = oses[i]
     print('Loading data for', app_name, '........')
     
     with open(filepath) as f:
@@ -63,13 +66,26 @@ for i in range(len(filepaths)):
     titles = []
     dates = []
     versions = []
-
-    for line in d:
-        vals = line[0].split("******")
-        ratings.append(float(vals[0]))
-        reviews.append(vals[1])
-        dates.append(vals[2])
-        versions.append(vals[3])
+    
+    #account for the different file structures for android/ios apps
+    if os == 'android':
+        for line in d:
+            vals = line[0].split("******")
+            ratings.append(float(vals[0]))
+            reviews.append(vals[1])
+            dates.append(vals[2])
+            versions.append(vals[3])
+    elif os == 'ios':
+        for line in d:
+            vals = line[0].split("******")
+            ratings.append(float(vals[0]))
+            reviews.append(vals[1])
+            #ios review dates are like 'Apr 01, 2017'
+            #we'll turn them into '2017-04-01' to make it consistent with the android ones
+            date = parser.parse(vals[3]).strftime('%Y-%m-%d')
+            dates.append(date)
+            versions.append(vals[4])
+        
 
 
 
