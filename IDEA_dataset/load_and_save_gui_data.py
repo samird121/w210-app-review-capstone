@@ -113,7 +113,7 @@ for i in range(len(filepaths)):
     final_reviews_processed = np.array(processed_reviews)[nonzero_indeces]
     final_reviews =  [review.split(" ") for review in final_reviews_processed]
     final_reviews_unprocessed =  np.array(reviews)[nonzero_indeces]
-    #final_ratings = np.array(ratings)[nonzero_indeces]
+    final_ratings = [float(rating) for rating in np.array(ratings)[nonzero_indeces]]
     #final_titles = np.array(titles)[nonzero_indeces]
     final_dates = np.array(dates)[nonzero_indeces]
     unique_dates = np.unique(np.array(final_dates))
@@ -128,7 +128,7 @@ for i in range(len(filepaths)):
     model.save(model_filename)
 
 
-    d = {'reviews_unprocessed':final_reviews_unprocessed, 'reviews_processed':final_reviews_processed, 'dates':final_dates, 'versions':final_versions}
+    d = {'reviews_unprocessed':final_reviews_unprocessed, 'reviews_processed':final_reviews_processed, 'dates':final_dates, 'versions':final_versions, 'ratings':final_ratings}
 
     df = pd.DataFrame(data = d)
     data_filename = "../../large files/"+app_name+"_post_processing_data.csv"
