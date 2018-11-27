@@ -15,6 +15,7 @@ import matplotlib.pyplot as plt
 
 from sklearn.preprocessing import StandardScaler
 from sklearn.linear_model import LogisticRegression
+#from sklearn.naive_bayes import BernoulliNB
 from sklearn.feature_extraction.text import *
 
 from scipy.spatial.distance import cdist, cosine
@@ -26,11 +27,13 @@ from nltk.tokenize import sent_tokenize, word_tokenize
 from nltk.corpus import stopwords
 from nltk.stem.porter import PorterStemmer
 
-from bokeh.io import curdoc
+from bokeh.io import curdoc, output_file
 from bokeh.layouts import row, column
 from bokeh.models import ColumnDataSource, Range1d, LinearAxis
 from bokeh.models.widgets import Slider, TextInput, PreText, Select, RangeSlider, Button, DateRangeSlider
 from bokeh.plotting import figure
+
+output_file('app_gui_11-25-18.html')
 
 stop_words = stopwords.words('english')
 def custom_preprocessor(text):
@@ -66,9 +69,9 @@ def custom_preprocessor(text):
 
 ######
 
-#app_names = ['ebay', 'clean_master', 'swiftkey_keyboard', 'viber', 'noaa-radar-pro-severe-weather', 'youtube']
+app_names = ['ebay', 'clean_master', 'swiftkey_keyboard', 'viber', 'noaa-radar-pro-severe-weather', 'youtube']
 #for testing, it is quicker to just load one app
-app_names = ['ebay']
+#app_names = ['ebay']
 
 model_dict = {}
 avg_vectors_scaled_dict = {}
@@ -215,16 +218,40 @@ def get_topic_evolution_data(distances, unique_date_indices, relevance_threshold
     return mean_distances, percent_relevant_reviews
 
 
+#this is too slow without pre-vectorizing words which may just not be worth it
 def get_timeframe_words(final_reviews_unprocessed, review_indices):
-    print('lr start')
-    cv = CountVectorizer(min_df=2, ngram_range=(0,2))
+    print('nb start')
+    cv = CountVectorizer(min_df=1, ngram_range=(0,2))
     cv_sentences = cv.fit_transform(final_reviews_unprocessed)
     n_reviews = len(final_reviews_unprocessed)
     y = [n in review_indices for n in range(0, n_reviews)]
     
-    lr = LogisticRegression(penalty='l1')
+    lr = LogisticRegression()
     lr.fit(cv_sentences, y)
-    preds = lr.predict(cv_sentences[review_indices])
+    topweight_indeces = np.argsort(lr.coef_[0])[-20:]
+    topweights = lr.coef_[0][topweight_indeces]
+    cv_featurenames = cv.get_feature_names()
+    
+    #preds = nb.predict(cv_sentences[review_indices])
+    #top_pred_indices = np.argsort(preds)
+    #top_pred_indices = top_pred_indices[-10:]
+    
+    output = ''
+    for index in topweight_indeces:
+        output = output + cv_featurenames[index] + ', ' + str(lr.coef_[0][index])
+        output += '\n'
+    print('nb end')
+    return output
+
+def get_timeframe_words2(final_reviews_unprocessed, avg_vectors_scaled, review_indices):
+    print('nb start')
+
+    n_reviews = len(final_reviews_unprocessed)
+    y = [n in review_indices for n in range(0, n_reviews)]
+    
+    lr = LogisticRegression()
+    lr.fit(avg_vectors_scaled, y)
+    preds = lr.predict(avg_vectors_scaled[review_indices])
     top_pred_indices = np.argsort(preds)
     top_pred_indices = top_pred_indices[-10:]
     
@@ -232,7 +259,7 @@ def get_timeframe_words(final_reviews_unprocessed, review_indices):
     for index in top_pred_indices:
         output += final_reviews_unprocessed[review_indices][index]
         output += '\n'
-    print('lr end')
+    print('nb end')
     return output
         
 
@@ -243,7 +270,7 @@ def get_timeframe_words(final_reviews_unprocessed, review_indices):
     
     
 #initialize variables for gui
-query = 'i love this app'
+q = 'i love this app'
 initial_app_name = 'ebay'
 
 model = model_dict[initial_app_name]
@@ -255,7 +282,7 @@ unique_date_indices = unique_date_indices_dict[initial_app_name]
 final_ratings = final_ratings_dict[initial_app_name]
 r = 0.5
 
-distances, key_list_nonvocab_words = find_relevant_reviews(query, avg_vectors_scaled, scaler, model, scaled=True)
+distances, key_list_nonvocab_words = find_relevant_reviews(q, avg_vectors_scaled, scaler, model, scaled=True)
 mean_distances, percent_relevant_reviews = get_topic_evolution_data(distances, unique_date_indices, r)
 printed_reviews_text = print_relevant_reviews(distances, final_reviews_unprocessed, n=10)
 mean_ratings, n_reviews = get_app_over_time_data(unique_date_indices, final_ratings)
@@ -281,7 +308,17 @@ tools = 'pan,wheel_zoom,xbox_select,reset'
 
 
 
-# Set up plot
+# Set up plots and widgets
+#COLUMN 1
+app_select = Select(title='Select app:', value=app_names[0], options=app_names)
+query = TextInput(title="query", value='i love this app')
+words_not_in_vocab = PreText(text='Query words not in vocab: '+', '.join(key_list_nonvocab_words))
+relevance_threshold = Slider(title="relevance threshold", value=0.5, start=0, end=1, step=0.01)
+limit_to_keyword = TextInput(title="limit to reviews containing the word:", value='')
+limit_to_ratings = RangeSlider(title="limit to reviews with ratings:", start = 1, end = 5, step=1, value=(1,5), width=col1_width)
+update_plots_button = Button(label="Update everything!", button_type="success")
+
+#COLUMN 2
 plot = figure(plot_height=250, plot_width=col2_width, title='Average ratings for app: ' + initial_app_name, tools=tools, active_drag="xbox_select", y_range=(1,5), x_axis_type='datetime')
 plot.extra_y_ranges = {"n_reviews": Range1d(start=0, end=np.max(n_reviews))}
 plot.vbar('x', top='y2', source=source, color="purple",width=0.9, y_range_name="n_reviews", legend="# reviews per day")
@@ -289,25 +326,16 @@ plot.add_layout(LinearAxis(y_range_name="n_reviews"), 'right')
 plot.line('x', 'y', source=source,  line_width=2, line_alpha=0.8, line_color='blue', legend="Mean ratings per day")
 
 
-
-plot2 = figure(plot_height=250, plot_width=col2_width, title='% reviews with cosine similarity above ' + str(r) + ' for query: ' + query, y_range=(0,100), x_axis_type='datetime')
+plot2 = figure(plot_height=250, plot_width=col2_width, title='% reviews with cosine similarity above ' + str(r) + ' for query: ' + q, y_range=(0,100), x_axis_type='datetime')
 plot2.line('x', 'y', source=source2, line_width=3, line_alpha=1, line_color='green', selection_color="red",)
 plot2.line('x', 'y', source=source2_selected, line_width=4, line_alpha=0.8, line_color='red', selection_color="red",)
 
-update_plots_button = Button(label="Update everything!", button_type="success")
-
-# Set up widgets
-query = TextInput(title="query", value='i love this app')
-words_not_in_vocab = PreText(text='Query words not in vocab: '+', '.join(key_list_nonvocab_words))
-relevance_threshold = Slider(title="relevance threshold", value=0.5, start=0, end=1, step=0.01)
-app_select = Select(title='Select app:', value=app_names[0], options=app_names)
-limit_to_keyword = TextInput(title="limit to reviews containing the word:", value='')
-
-reviews = PreText(text=printed_reviews_text, width=col1_width)
 date_range = DateRangeSlider(title="Select range of dates", start = unique_dates[0], end = unique_dates[-1], step=1, value=(unique_dates[0], unique_dates[-1]), width=col2_width)
-update_printed_reviews_button = Button(label="Get relevant reviews in selected timeframe", button_type="success")
+reviews = PreText(text=printed_reviews_text, width=col2_width)
 
-timeframe_words = PreText(text='Select a range of dates to list the words most specifically associated with those dates.', width=col2_width)
+#update_printed_reviews_button = Button(label="Get relevant reviews in selected timeframe", button_type="success")
+#update_timeframe_words = Button(label="Find phrases used more often in selected timeframe", button_type="success")
+#timeframe_words = PreText(text='Select a range of dates to list the words most specifically associated with those dates.', width=col2_width)
 
 
 
@@ -346,23 +374,35 @@ def update_data():
     unique_dates = unique_dates_dict[app_name]
     unique_date_indices = unique_date_indices_dict[app_name]
     final_ratings = final_ratings_dict[initial_app_name]
+    final_dates = final_dates_dict[initial_app_name]
     
-
     
-    #limit_keyword = limit_to_keyword.value
-    #if len(limit_keyword) > 0:
-    #    limit_indices = np.where([limit_keyword in review for review in final_reviews_unprocessed])
-    #    #print(limit_indices)
-    #    final_reviews_unprocessed = final_reviews_unprocessed[limit_indices]
-    #    avg_vectors_scaled = avg_vectors_scaled[limit_indices]
-    #    
-    #    final_dates = np.array(final_dates_dict[app_name])[limit_indices]
-    #    unique_dates = np.unique(final_dates)
-    #    unique_date_indices = []
-    #    for date in unique_dates:
-    #            date_indices = np.where(np.array(final_dates)==date)[0]
-    #            unique_date_indices.append(date_indices)
-    #    unique_dates = [parser.parse(date) for date in unique_dates]
+    (start_rating, end_rating) = limit_to_ratings.value
+    #if a range of ratings has been selected
+    if start_rating != 1 or end_rating != 5:
+        ratings_indeces = []
+        for i in range(start_rating, end_rating+1):
+            i_indeces = np.where(final_ratings == i)[0]
+            for i_index in i_indeces:
+                ratings_indeces.append(i_index)
+            
+        #flatten array
+        #ratings_indeces = [item for sublist in ratings_indeces for item in sublist]
+        print(ratings_indeces)
+        avg_vectors_scaled = avg_vectors_scaled[ratings_indeces]
+        final_reviews_unprocessed = final_reviews_unprocessed[ratings_indeces]
+        final_ratings = final_ratings[ratings_indeces]
+        
+        final_dates = final_dates[ratings_indeces]
+        unique_dates = np.unique(np.array(final_dates)) 
+        unique_date_indices = []
+        for date in unique_dates:
+                date_indices = np.where(np.array(final_dates)==date)[0]
+                unique_date_indices.append(date_indices)
+                
+        unique_dates = [parser.parse(date) for date in unique_dates]
+        
+        
     
 
     # Get the current slider values
@@ -379,7 +419,7 @@ def update_data():
     mean_distances, percent_relevant_reviews = get_topic_evolution_data(distances, unique_date_indices, r)
     mean_ratings, n_reviews = get_app_over_time_data(unique_date_indices, final_ratings)
 
-    source.data = dict(x=unique_dates, y=mean_ratings)
+    source.data = dict(x=unique_dates, y=mean_ratings, y2=n_reviews)
     source2.data = dict(x=unique_dates, y=percent_relevant_reviews)
     
     
@@ -398,11 +438,11 @@ def update_data():
         print_distances = np.array(distances)[review_indices]
         print_reviews_unprocessed = final_reviews_unprocessed[review_indices]
         
-        timeframe_words.text = get_timeframe_words(final_reviews_unprocessed, review_indices)
+        #timeframe_words.text = get_timeframe_words(final_reviews_unprocessed, review_indices)
     else:
         print_distances = distances
         print_reviews_unprocessed = final_reviews_unprocessed
-        timeframe_words.text='Select a range of dates to list the words most specifically associated with those dates.'
+        #timeframe_words.text='Select a range of dates to list the words most specifically associated with those dates.'
     
     reviews.text = print_relevant_reviews(print_distances, print_reviews_unprocessed, n=10)
     
@@ -418,19 +458,20 @@ def update_data():
 
 
 update_plots_button.on_click(update_data)                                                                           
-update_printed_reviews_button.on_click(update_data) 
+#update_printed_reviews_button.on_click(update_data) 
 
 
 
 
 # Set up layouts and add to document
 
-col1 = column(app_select, query,words_not_in_vocab, relevance_threshold,limit_to_keyword, update_plots_button,reviews, width=col1_width)
-col2 = column(plot, plot2, date_range,timeframe_words, width=col2_width)
+col1 = column(app_select, query,words_not_in_vocab, relevance_threshold,limit_to_keyword,limit_to_ratings, update_plots_button, width=col1_width)
+col2 = column(plot, plot2, date_range,reviews, width=col2_width)
 layout = row(col1, col2)
 
 curdoc().add_root(layout)
 curdoc().title = "App Review GUI!!"
+
 
 
 
