@@ -29,11 +29,11 @@ from nltk.stem.porter import PorterStemmer
 
 from bokeh.io import curdoc, output_file, show
 from bokeh.layouts import row, column
-from bokeh.models import ColumnDataSource, Range1d, LinearAxis
+from bokeh.models import ColumnDataSource, Range1d, LinearAxis, CustomJS
 from bokeh.models.widgets import Slider, TextInput, PreText, Select, RangeSlider, Button, DateRangeSlider
 from bokeh.plotting import figure
 
-output_file('bokeh_gui_placeholder_full.html')
+output_file('bokeh_gui_for_website_12-2-18.html')
 
 stop_words = stopwords.words('english')
 def custom_preprocessor(text):
@@ -71,7 +71,7 @@ def custom_preprocessor(text):
 
 #app_names = ['ebay', 'clean_master', 'swiftkey_keyboard', 'viber', 'noaa-radar-pro-severe-weather', 'youtube']
 #for testing, it is quicker to just load one app
-app_names = ['ebay']
+app_names = ['ebay', 'viber', 'youtube']
 
 model_dict = {}
 avg_vectors_scaled_dict = {}
@@ -266,56 +266,113 @@ def get_timeframe_words2(final_reviews_unprocessed, avg_vectors_scaled, review_i
     
 
     
-    
+
+
+
     
     
 #initialize variables for gui
-q = 'freeze'
+
+query_options = ['good', 'bad', 'love', 'hate', 'freeze', 'crash', 'load', 'buffer', 'video', 'download', 'version', 'update', 'quality', 'connection']
+#q = 'freeze'
 initial_app_name = 'ebay'
+#app_name_options = ['ebay']
 
-model = model_dict[initial_app_name]
-avg_vectors_scaled = avg_vectors_scaled_dict[initial_app_name]
-scaler = scaler_dict[initial_app_name]
-final_reviews_unprocessed = final_reviews_unprocessed_dict[initial_app_name]
-unique_dates = unique_dates_dict[initial_app_name]
-unique_date_indices = unique_date_indices_dict[initial_app_name]
-final_ratings = final_ratings_dict[initial_app_name]
-r = 0.5
 
-distances, key_list_nonvocab_words = find_relevant_reviews(q, avg_vectors_scaled, scaler, model, scaled=True)
-mean_distances, percent_relevant_reviews = get_topic_evolution_data(distances, unique_date_indices, r)
-printed_reviews_text = print_relevant_reviews(distances, final_reviews_unprocessed, n=10)
-mean_ratings, n_reviews = get_app_over_time_data(unique_date_indices, final_ratings)
+r = 0.25
+
+percent_relevant_reviews_dict = {}
+printed_reviews_text_dict = {}
+mean_ratings_dict = {}
+n_reviews_dict = {}
+for app_name in app_names:
+    percent_relevant_reviews_dict[app_name] = {}
+    printed_reviews_text_dict[app_name] = {}
+
+for app_name in app_names:
+    print('Generating data for '+app_name+'...')
+    model = model_dict[app_name]
+    avg_vectors_scaled = avg_vectors_scaled_dict[app_name]
+    scaler = scaler_dict[app_name]
+    final_reviews_unprocessed = final_reviews_unprocessed_dict[app_name]
+    unique_dates = unique_dates_dict[app_name]
+    unique_date_indices = unique_date_indices_dict[app_name]
+    final_ratings = final_ratings_dict[app_name]
+    
+    for q in query_options:
+        print('query: '+q)
+        distances, key_list_nonvocab_words = find_relevant_reviews(q, avg_vectors_scaled, scaler, model, scaled=True)
+        mean_distances, percent_relevant_reviews = get_topic_evolution_data(distances, unique_date_indices, r)
+        printed_reviews_text = print_relevant_reviews(distances, final_reviews_unprocessed, n=10)
+        mean_ratings, n_reviews = get_app_over_time_data(unique_date_indices, final_ratings)
+        percent_relevant_reviews_dict[app_name][q] = percent_relevant_reviews
+        printed_reviews_text_dict[app_name][q] = [printed_reviews_text]
+    mean_ratings_dict[app_name] = mean_ratings
+    n_reviews_dict[app_name] = n_reviews
+    
     
     
     
 #BOKEH!
-
 col1_width=500
 col2_width=800
-    
+#print(percent_relevant_reviews_dict) 
     
     
     
 # Set up data
+
+percent_relevant_reviews = percent_relevant_reviews_dict[initial_app_name][query_options[0]]
+unique_dates = unique_dates_dict[initial_app_name]
+mean_ratings = mean_ratings_dict[initial_app_name]
+n_reviews = n_reviews_dict[initial_app_name]
+printed_reviews_text = printed_reviews_text_dict[initial_app_name][query_options[0]][0]
 
 source = ColumnDataSource(data=dict(x=unique_dates, y=mean_ratings, y2=n_reviews))
 #source_selected = ColumnDataSource(data=dict(x=unique_dates, y=mean_ratings))
 source2 = ColumnDataSource(data=dict(x=unique_dates, y=percent_relevant_reviews))
 source2_selected = ColumnDataSource(data=dict(x=unique_dates, y=percent_relevant_reviews))
 
+#[app_name][query]
+prr_source_ebay = ColumnDataSource(data=percent_relevant_reviews_dict['ebay'])
+prr_source_viber = ColumnDataSource(data=percent_relevant_reviews_dict['viber'])
+prr_source_youtube = ColumnDataSource(data=percent_relevant_reviews_dict['youtube'])
+
+prt_source_ebay = ColumnDataSource(data=printed_reviews_text_dict['ebay'])
+prt_source_viber = ColumnDataSource(data=printed_reviews_text_dict['viber'])
+prt_source_youtube = ColumnDataSource(data=printed_reviews_text_dict['youtube'])
+
+#[app_name]
+ud_source_ebay = ColumnDataSource(data=dict(x=unique_dates_dict['ebay']))
+ud_source_viber = ColumnDataSource(data=dict(x=unique_dates_dict['viber']))
+ud_source_youtube = ColumnDataSource(data=dict(x=unique_dates_dict['youtube']))
+
+mr_source_ebay = ColumnDataSource(data=dict(x=mean_ratings_dict['ebay']))
+mr_source_viber = ColumnDataSource(data=dict(x=mean_ratings_dict['viber']))
+mr_source_youtube = ColumnDataSource(data=dict(x=mean_ratings_dict['youtube']))
+
+nr_source_ebay = ColumnDataSource(data=dict(x=n_reviews_dict['ebay']))
+nr_source_viber = ColumnDataSource(data=dict(x=n_reviews_dict['viber']))
+nr_source_youtube = ColumnDataSource(data=dict(x=n_reviews_dict['youtube']))
+
+
 tools = 'pan,wheel_zoom,xbox_select,reset'
+
+
+
+
 
 
 
 # Set up plots and widgets
 #COLUMN 1
 app_select = Select(title='Select app:', value=app_names[0], options=app_names)
-query = TextInput(title="query", value='i love this app')
-words_not_in_vocab = PreText(text='Query words not in vocab: '+', '.join(key_list_nonvocab_words))
-relevance_threshold = Slider(title="relevance threshold", value=0.5, start=0, end=1, step=0.01)
+#query = TextInput(title="query", value='i love this app')
+query = Select(title='Select query:', value=query_options[0], options=query_options)
+
+
+
 limit_to_keyword = TextInput(title="limit to reviews containing the word:", value='')
-limit_to_ratings = RangeSlider(title="limit to reviews with ratings:", start = 1, end = 5, step=1, value=(1,5), width=col1_width)
 update_plots_button = Button(label="Update everything!", button_type="success")
 
 #COLUMN 2
@@ -326,19 +383,77 @@ plot.add_layout(LinearAxis(y_range_name="n_reviews"), 'right')
 plot.line('x', 'y', source=source,  line_width=2, line_alpha=0.8, line_color='blue', legend="Mean ratings per day")
 
 
-plot2 = figure(plot_height=250, plot_width=col2_width, title='% reviews with cosine similarity above ' + str(r) + ' for query: ' + q, y_range=(0,100), x_axis_type='datetime')
+plot2 = figure(plot_height=250, plot_width=col2_width, title='% reviews with cosine similarity above 0.25 for query: ' + query_options[0], y_range=(0,100), x_axis_type='datetime')
 plot2.line('x', 'y', source=source2, line_width=3, line_alpha=1, line_color='green', selection_color="red",)
-plot2.line('x', 'y', source=source2_selected, line_width=4, line_alpha=0.8, line_color='red', selection_color="red",)
+#plot2.line('x', 'y', source=source2_selected, line_width=4, line_alpha=0.8, line_color='red', selection_color="red",)
 
-date_range = DateRangeSlider(title="Select range of dates", start = unique_dates[0], end = unique_dates[-1], step=1, value=(unique_dates[0], unique_dates[-1]), width=col2_width)
-reviews = PreText(text=printed_reviews_text, width=col2_width)
+
+reviews = PreText(text=printed_reviews_text, width=col1_width)
 
 #update_printed_reviews_button = Button(label="Get relevant reviews in selected timeframe", button_type="success")
 #update_timeframe_words = Button(label="Find phrases used more often in selected timeframe", button_type="success")
 #timeframe_words = PreText(text='Select a range of dates to list the words most specifically associated with those dates.', width=col2_width)
 
+#javascript callbacks for standalone html files
+callback = CustomJS(args=dict(source=source, source2=source2,reviews=reviews,plot=plot, plot2=plot2, prr_source_ebay=prr_source_ebay, prr_source_viber=prr_source_viber, prr_source_youtube=prr_source_youtube,prt_source_ebay=prt_source_ebay, prt_source_viber=prt_source_viber, prt_source_youtube=prt_source_youtube, ud_source_ebay=ud_source_ebay, ud_source_viber=ud_source_viber,ud_source_youtube=ud_source_youtube, app_select=app_select, query=query, mr_source_ebay=mr_source_ebay, mr_source_viber=mr_source_viber, mr_source_youtube=mr_source_youtube, nr_source_ebay=nr_source_ebay, nr_source_viber=nr_source_viber, nr_source_youtube=nr_source_youtube), code="""
+    var data2 = source2.data;
+    var q = query.value
+    
+    var current_app = app_select.value
+    
+    if (current_app == 'ebay'){
+        var newydata = prr_source_ebay.data;
+        var newxdata = ud_source_ebay.data;
+        
+        var newmrdata = mr_source_ebay.data;
+        var newnrdata = nr_source_ebay.data;
+        
+        var newtextdata = prt_source_ebay.data;
+    } else if (current_app == 'viber'){
+        var newydata = prr_source_viber.data;
+        var newxdata = ud_source_viber.data;
+        
+        var newmrdata = mr_source_viber.data;
+        var newnrdata = nr_source_viber.data;
+        
+        var newtextdata = prt_source_viber.data;
+    } else if (current_app == 'youtube'){
+        var newydata = prr_source_youtube.data;
+        var newxdata = ud_source_youtube.data;
+        
+        var newmrdata = mr_source_youtube.data;
+        var newnrdata = nr_source_youtube.data;
+        
+        var newtextdata = prt_source_youtube.data;
+    }
+
+    
+    data2['x'] = newxdata['x']
+    data2['y'] = newydata[q]
+        
+    source2.change.emit();
+    
+    
+    var data = source.data;
+    
+    data['x'] = newxdata['x']
+    data['y'] = newmrdata['x']
+    data['y2'] = newnrdata['x']
+    
+    source.change.emit();
+    
+    
+    reviews.text = newtextdata[q][0];
+    
+""")
+
+#for (var i = 0; i < x.length; i++) {
+#        y[i] = newy[i]
+#    }
 
 
+#query.js_on_change('value', callback)
+update_plots_button.js_on_click(callback)
 
 
 
@@ -359,7 +474,7 @@ def update_app(attrname, old, new):
     
     
     
-app_select.on_change('value', update_app)
+#app_select.on_change('value', update_app)
 
 
 
@@ -377,30 +492,7 @@ def update_data():
     final_dates = final_dates_dict[initial_app_name]
     
     
-    (start_rating, end_rating) = limit_to_ratings.value
-    #if a range of ratings has been selected
-    if start_rating != 1 or end_rating != 5:
-        ratings_indeces = []
-        for i in range(start_rating, end_rating+1):
-            i_indeces = np.where(final_ratings == i)[0]
-            for i_index in i_indeces:
-                ratings_indeces.append(i_index)
-            
-        #flatten array
-        #ratings_indeces = [item for sublist in ratings_indeces for item in sublist]
-        print(ratings_indeces)
-        avg_vectors_scaled = avg_vectors_scaled[ratings_indeces]
-        final_reviews_unprocessed = final_reviews_unprocessed[ratings_indeces]
-        final_ratings = final_ratings[ratings_indeces]
-        
-        final_dates = final_dates[ratings_indeces]
-        unique_dates = np.unique(np.array(final_dates)) 
-        unique_date_indices = []
-        for date in unique_dates:
-                date_indices = np.where(np.array(final_dates)==date)[0]
-                unique_date_indices.append(date_indices)
-                
-        unique_dates = [parser.parse(date) for date in unique_dates]
+
         
         
     
@@ -413,51 +505,30 @@ def update_data():
     
 
 
-    distances, key_list_nonvocab_words = find_relevant_reviews(q, avg_vectors_scaled, scaler, model, scaled=True)
-    words_not_in_vocab.text = 'Query words not in vocab: '+', '.join(key_list_nonvocab_words)
+    #distances, key_list_nonvocab_words = find_relevant_reviews(q, avg_vectors_scaled, scaler, model, scaled=True)
+    #words_not_in_vocab.text = 'Query words not in vocab: '+', '.join(key_list_nonvocab_words)
 
-    mean_distances, percent_relevant_reviews = get_topic_evolution_data(distances, unique_date_indices, r)
-    mean_ratings, n_reviews = get_app_over_time_data(unique_date_indices, final_ratings)
+    #mean_distances, percent_relevant_reviews = get_topic_evolution_data(distances, unique_date_indices, r)
+    #mean_ratings, n_reviews = get_app_over_time_data(unique_date_indices, final_ratings)
 
-    source.data = dict(x=unique_dates, y=mean_ratings, y2=n_reviews)
+    #source.data = dict(x=unique_dates, y=mean_ratings, y2=n_reviews)
+    percent_relevant_reviews = percent_relevant_reviews_dict[app_name][q]
     source2.data = dict(x=unique_dates, y=percent_relevant_reviews)
     
     
     
     
-    (start_date, end_date) = date_range.value_as_datetime
-    min_date = date_range.start
-    max_date = date_range.end
     
-    start_index = np.where(np.array(unique_dates, dtype='datetime64') >= np.datetime64(start_date))[0][0]
-    end_index = np.where(np.array(unique_dates, dtype='datetime64') <= np.datetime64(end_date))[0][-1]
     
-    #if a range of dates has been selected (i.e. the selection isn't just on the min/max)
-    if start_date != min_date or end_date != max_date:        
-        review_indices = [item for sublist in unique_date_indices[start_index:end_index] for item in sublist]
-        print_distances = np.array(distances)[review_indices]
-        print_reviews_unprocessed = final_reviews_unprocessed[review_indices]
-        
-        #timeframe_words.text = get_timeframe_words(final_reviews_unprocessed, review_indices)
-    else:
-        print_distances = distances
-        print_reviews_unprocessed = final_reviews_unprocessed
-        #timeframe_words.text='Select a range of dates to list the words most specifically associated with those dates.'
-    
+    print_distances = distances
+    print_reviews_unprocessed = final_reviews_unprocessed
     reviews.text = print_relevant_reviews(print_distances, print_reviews_unprocessed, n=10)
     
-    #original_source_xvals = source.data['x']
-    original_source2_xvals = source2.data['x']
-    #original_source_yvals = source.data['y']
-    original_source2_yvals = source2.data['y']
-    
-    #source_selected.data = dict(x=original_source_xvals[start_index:end_index], y=original_source_yvals[start_index:end_index])
-    source2_selected.data = dict(x=original_source2_xvals[start_index:end_index], y=original_source2_yvals[start_index:end_index])
-    
+
     
 
 
-update_plots_button.on_click(update_data)                                                                           
+#update_plots_button.on_click(update_data)                                                                           
 #update_printed_reviews_button.on_click(update_data) 
 
 
@@ -465,15 +536,15 @@ update_plots_button.on_click(update_data)
 
 # Set up layouts and add to document
 
-col1 = column(app_select, query,words_not_in_vocab, relevance_threshold,limit_to_keyword,limit_to_ratings, update_plots_button, width=col1_width)
-col2 = column(plot, plot2, date_range,reviews, width=col2_width)
+col1 = column(app_select, query, update_plots_button, reviews, width=col1_width)
+col2 = column(plot, plot2, width=col2_width)
 layout = row(col1, col2)
 
-curdoc().add_root(layout)
-curdoc().title = "App Review GUI!!"
+#curdoc().add_root(layout)
+#curdoc().title = "App Review GUI!!"
 
 
-#show(layout)
+show(layout)
 
 load_time = time.time() - load_start_time
 print('Load time:', load_time)
