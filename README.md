@@ -4,7 +4,7 @@ Samir Datta, Thu Nguyen and Yubo Zhang
 
 Webpage:  https://goldenmonster0602.github.io/w210final.github.io/
 
-** **Introduction** **
+**Introduction** 
 
 
 Data
