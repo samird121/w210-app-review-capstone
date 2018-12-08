@@ -1,7 +1,6 @@
-# 2018 fall-W210-app-review-capstone
+# 2018 fall-W210-app-review-capstone Emergent
 Samir Datta, Thu Nguyen and Yubo Zhang
 
-Emergent 
 
 Webpage:  https://goldenmonster0602.github.io/w210final.github.io/
 
