@@ -1,5 +1,6 @@
-# 2018 fall-W210-app-review-capstone Emergent
-Samir Datta, Thu Nguyen and Yubo Zhang
+# 2018 Fall-W210-Capstone
+# Emergent
+*Samir Datta, Thu Nguyen and Yubo Zhang*
 
 
 Webpage:  https://goldenmonster0602.github.io/w210final.github.io/
@@ -7,12 +8,12 @@ Webpage:  https://goldenmonster0602.github.io/w210final.github.io/
 **Introduction** 
 
 
-Data
+**Data**
 
 For this product demo, we chose to analyze Viber app reviews from the Google Play Store.  First, clean, analyze reviews to find important topics. This includes unsupervised methods for automatic topic clustering, and keyword detection.  And then, map emerging “topics” back to “notable” reviews that contain useful information.
 
 
-Lessons Learned
+**Lessons Learned**
 
 For this project, we used Latent Dirichlet Allocation (LDA), which is a algorithms used to discover the topics that are present in a corpus. We also incorporated with Word2Vec, it provides direct access to vector representations of words, which can help achieve decent performance across a variety of tasks. We also tried several methods that unfortunately didn't work out for us, here is a few :
 
@@ -28,4 +29,4 @@ Principle Coordinate Analysis is a method to explore and to visualize similariti
 
 
 
-Reference
+**Reference**
