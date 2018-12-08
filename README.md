@@ -23,7 +23,7 @@ PCoA
 Principle Coordinate Analysis is a method to explore and to visualize similarities or dissimilarities of data. It starts with a similarity matrix or dissimilarity matrix and assigns for each item a location in a low-dimensional space. By using PCoA we can visualize individual and/or group differences. 
 
 
-[GitHub Pages](w210-app-review-capstone/new_scraped_reviews/YuboClusteringtesting.ipynb)
+[GitHub Pages](https://github.com/samird121/w210-app-review-capstone/blob/master/new_scraped_reviews/YuboClusteringtesting.ipynb)
 
 
 
