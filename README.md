@@ -1,4 +1,4 @@
-# w210-app-review-capstone
+# 2018 fall-W210-app-review-capstone
 Samir Datta, Thu Nguyen and Yubo Zhang
 
 Emergent 
@@ -15,8 +15,14 @@ For this product demo, we chose to analyze Viber app reviews from the Google Pla
 
 Lessons Learned
 
-K-means cluster: 
+For this project, we used Latent Dirichlet Allocation (LDA), which is a algorithms used to discover the topics that are present in a corpus. We also incorporated with Word2Vec, it provides direct access to vector representations of words, which can help achieve decent performance across a variety of tasks. We also tried several methods that unfortunately didn't work out for us, here is a few :
+
+K-means cluster: The K-means clustering algorithm is used to find groups which have not been explicitly labeled in the data and to find patterns and make better decisions. However it didn't work with our data.
 
 PCoA 
 Principle Coordinate Analysis is a method to explore and to visualize similarities or dissimilarities of data. It starts with a similarity matrix or dissimilarity matrix and assigns for each item a location in a low-dimensional space. By using PCoA we can visualize individual and/or group differences. 
+
+
+
+
 Reference
