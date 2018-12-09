@@ -1,0 +1,123 @@
+---
+title: "Exploratory Data Analysis"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+## Setup and Imports
+
+```{r setup, message=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(readr)
+library(dplyr)
+library(Hmisc)
+library(ggplot2)
+library(lubridate)
+library(parsedate)
+setwd('/home/xuanthu/Dropbox/W210/IDEA_dataset/')
+viber_raw <- read_delim('./android/viber/total_info.txt',
+                      delim='******',
+                      col_names=F)
+
+viber <- data.frame(rating=viber_raw$X1, review=viber_raw$X7, date=viber_raw$X13, version=viber_raw$X19)
+viber$date <- parse_date(viber$date)
+```
+
+# Summary and cleaning
+
+```{r}
+summary(viber)
+glimpse(viber)
+describe(viber)
+viber$day <- floor_date(viber$date, "day")
+
+# color blind palette
+cbPalette <- c("#CC79A7", "#D55E00", "#999999", "#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2" )
+
+# count review by version
+ggplot(data = viber, aes(x = version)) +
+  geom_bar(fill = "#E69F00") +
+  theme_bw() +
+  ylab("Review Count") +
+  xlab("Version") +
+  ggtitle("Review count by app version") +
+  theme(axis.text.x = element_text(size = 12, angle = 90, hjust = 1),
+        axis.text.y = element_text(size = 12),
+        axis.title = element_text(size = 14),
+        plot.title = element_text(lineheight=1, face="bold", size = 14))
+ggsave(filename = 'Viber_review_count_by_version.png', width=10, height=5)
+
+# Ratings by app versions
+ggplot(viber, aes(x = version, fill = factor(rating))) +
+  geom_bar(position = "fill") +
+  theme_bw() +
+  ylab("Review Count") +
+  xlab("Version") +
+  labs(fill='Rating') +
+  scale_fill_manual(values=cbPalette) +
+  ggtitle("Rating Distribution by App Version") +
+  theme(axis.text.x = element_text(size = 12, angle = 90, hjust = 1),
+        axis.text.y = element_text(size = 12),
+        axis.title = element_text(size = 14),
+        plot.title = element_text(lineheight=1, face="bold", size = 14),
+        legend.position="bottom")
+ggsave(filename = 'Viber_review_distribution_by_version_stacked_bar.png', width=10, height=5)
+
+# boxplot, ratings by app version
+ggplot(viber, aes(x = version, y = rating, fill = as.factor(version))) +
+  geom_boxplot() +
+  stat_summary(fun.y=mean, geom="point", shape=20, size=3, color="darkblue", fill="darkblue") +
+  geom_jitter(width = 0.2, alpha = 0.1, size = 0.05) +
+  scale_fill_manual(values=cbPalette) +
+  ylab('Rating') +
+  xlab('Version') +
+  labs(fill = "Version") +
+  ggtitle('Rating boxplot by version') +
+  theme(axis.text.x = element_text(size = 12, angle = 90, hjust = 1),
+        axis.text.y = element_text(size = 12),
+        axis.title = element_text(size = 14),
+        plot.title = element_text(lineheight=1, face="bold", size = 14),
+        legend.position="none")
+ggsave(filename = 'Viber_boxplot_by_version.png', width=10, height=5)
+
+# how often do apps update?
+viber %>% group_by(day, version) %>%
+  summarise(review_count=n()) %>%
+  ggplot(aes(x = day, y = review_count, color = version)) +
+    geom_line() +
+    scale_colour_manual(values=cbPalette) +
+    theme_bw() +
+    ylab("Review Count") +
+    labs(color ='Version') +
+    ggtitle("Review Count Over Time by version") +
+    theme(axis.text.x = element_text(size = 12, hjust = 1),
+        axis.text.y = element_text(size = 12),
+        axis.title = element_text(size = 14),
+        plot.title = element_text(lineheight=1, face="bold", size = 14),
+        legend.position="bottom")
+ggsave(filename = 'Viber_app_reviews_over_time_by_version.png', width=10, height=5)
+
+viber_agg_day <- with(viber, aggregate(rating, by=list(day=day, version=version), mean))
+viber_agg_day$n_reviews <- with(viber, aggregate(rating, by=list(day=day, version=version), length))[,3]
+
+#date vs. rating
+ggp <- ggplot(viber_agg_day, 
+              aes(x=day, y=x, color=version,size=n_reviews))
+ggp + geom_point() + 
+  geom_smooth(inherit.aes=F, aes(x=day, y=x), span=.1, se=F, color='black') +
+  scale_color_manual(values=cbPalette) +
+  theme_bw() +
+  ylab('Mean Daily Rating') + xlab('') +
+  labs(fill = "Version") +
+  ggtitle('Mean daily ratings over time') +
+  theme(axis.text.x = element_text(size = 12, hjust = 1),
+        axis.text.y = element_text(size = 12),
+        axis.title = element_text(size = 14),
+        plot.title = element_text(lineheight=1, face="bold", size = 14),
+        legend.position="bottom")
+ggsave(filename = 'Viber_ratings_over_time.png', width=10, height=5)
+
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
