@@ -10,7 +10,7 @@ Webpage:  https://goldenmonster0602.github.io/w210final.github.io/
 
 **Data**
 
-For this product demo, we chose to analyze Viber app reviews from the Google Play Store.  First, clean, analyze reviews to find important topics. This includes unsupervised methods for automatic topic clustering, and keyword detection.  And then, map emerging “topics” back to “notable” reviews that contain useful information.
+Our data comprises of over 164,000 pre-processed reviews, acquired and used with permission from the ReMine-Lab (2). The reviews come from apps in both the iOS and Google Play store: NOOA Radar, YouTube, Viber, Clean Master, Ebay, and Swiftkey. Included along with the review text is information about the rating, version number, and more. 
 
 
 **Lessons Learned**
@@ -32,6 +32,6 @@ For this project, we used Latent Dirichlet Allocation (LDA), which is a algorith
 
 **Reference**
 1. Topic Modeling: https://medium.com/nanonets/topic-modeling-with-lsa-psla-lda-and-lda2vec-555ff65b0b05
-2. IDEA Method: https://github.com/cuiyungao/IDEA-1
-3. Mining Customer Reviews: https://www.cs.uic.edu/~liub/publications/kdd04-revSummary.pdf
-4. Modeling Topic Evaluations: http://acsweb.ucsd.edu/~jkalyana/papers/KDD_2015.pdf
+2. Gao, C., Zeng, J., Lyu, M., & King, I. "Online App Review Analysis for Identifying Emerging Issues." *Proceedings of the 40th International Conference on Software Engineering,* 2018
+3. Hu, M. & Liu, B. "Mining and Summarizing Customer Reviews." *Proceedings of the ACM SIGKDD International Conference on Knowledge Discovery and Data Mining (KDD-2004)*, Aug 22-25, 2004, Seattle, Washington, USA
+4. Kalyanam, J., Mantrach, A., Saez-Trumper, D., Vahabi, H. & Lanckriet, G. "Leveraging Social Context for Modeling Topic Evolution." *Proceedings of the 21th ACM SIGKDD International Conference on Knowledge Discovery and Data Mining,* Aug 10-13, 2014, Sydney, NSW, Australia
